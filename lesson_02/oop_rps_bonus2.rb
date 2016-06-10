@@ -59,15 +59,15 @@ class Computer < Player
 end
 
 class Winner
-    WINNERS = {
-      'rock' => %w(scissors lizard),
-      'paper' => %w(rock spock),
-      'scissors' => %w(paper lizard),
-      'lizard' => %w(paper spock),
-      'spock' => %w(rock scissors)
-    }.freeze
+  WINNERS = {
+    'rock' => %w(scissors lizard),
+    'paper' => %w(rock spock),
+    'scissors' => %w(paper lizard),
+    'lizard' => %w(paper spock),
+    'spock' => %w(rock scissors)
+  }.freeze
 
-    MATCHES_TO_WIN = 5
+  MATCHES_TO_WIN = 5
 
   def win?(first, second)
     WINNERS[first.to_s].include?(second.to_s)
