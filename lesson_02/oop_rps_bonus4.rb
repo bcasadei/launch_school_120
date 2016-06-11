@@ -29,13 +29,11 @@ class Player
   attr_accessor :move, :score, :history
 
   def initialize
-    set_name
     @history = History.new
     @score = 0
   end
 
   def update_history
-    p history
     history.record[move.to_s] += 1
   end
 end
@@ -43,19 +41,13 @@ end
 class Human < Player
   attr_accessor :name
 
-  def prompt(message)
-    puts "=> #{message}"
+  def initialize
+    super
+    set_name
   end
 
-  def set_name
-    n = ''
-    loop do
-      prompt "What's your name?"
-      n = gets.chomp
-      break unless n.empty?
-      prompt "Sorry, must enter a value."
-    end
-    self.name = n
+  def prompt(message)
+    puts "=> #{message}"
   end
 
   def choose
@@ -68,17 +60,37 @@ class Human < Player
     end
     self.move = Move.new(choice)
   end
+
+  private
+
+  def set_name
+    n = ''
+    loop do
+      prompt "What's your name?"
+      n = gets.chomp
+      break unless n.empty?
+      prompt "Sorry, must enter a value."
+    end
+    self.name = n
+  end
 end
 
 class Computer < Player
   attr_accessor :name
 
-  def set_name
-    self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
+  def initialize
+    super
+    set_name
   end
 
   def choose
     self.move = Move.new(Move::VALUES.sample)
+  end
+
+  private
+
+  def set_name
+    self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
   end
 end
 
@@ -184,7 +196,6 @@ class RPSGame
 
     clear_screen
 
-    answer.downcase == 'n'
     answer.downcase == 'y'
   end
 
