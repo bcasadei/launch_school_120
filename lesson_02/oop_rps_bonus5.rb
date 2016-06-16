@@ -1,6 +1,7 @@
 # frozen_string_literal: false
 class Move
   VALUES = %w(rock paper scissors lizard spock).freeze
+  SHORT_VALUES = %w(r p s l sp).freeze
 
   def initialize(value)
     @value = value
@@ -15,16 +16,12 @@ class Player
   attr_accessor :move, :score, :history
 
   def initialize
-    @history = {}
+    @history = Hash.new(0)
     @score = 0
   end
 
   def update_history
-    if history.key?(move.to_s)
-      history[move.to_s] += 1
-    else
-      history[move.to_s] = 1
-    end
+    history[move.to_s] += 1
   end
 end
 
@@ -40,11 +37,28 @@ class Human < Player
     puts "=> #{message}"
   end
 
+  def convert_values(value)
+    case value
+    when 'r'
+      'rock'
+    when 'p'
+      'paper'
+    when 's'
+      'scissors'
+    when 'l'
+      'lizard'
+    when 'sp'
+      'spock'
+    end
+  end
+
   def choose
     choice = nil
     loop do
-      prompt "Please choose rock, paper, scissors, lizard or spock:"
-      choice = gets.chomp
+      prompt "Please choose rock, paper, scissors, lizard or spock."
+      prompt "Or enter ('r' 'p' 's' 'l' or 'sp')"
+      choice = gets.chomp.downcase
+      choice = convert_values(choice) if Move::SHORT_VALUES.include?(choice)
       break if Move::VALUES.include?(choice)
       prompt "Sorry, invalid choice."
     end
@@ -123,26 +137,39 @@ class RPSGame
     puts "----------------------------------------"
   end
 
-  def determine_winner
+  def game_winner
     if WINNERS[human.move.to_s].include?(computer.move.to_s)
-      human.score += 1
-      prompt "#{human.name} won!"
+      human
     elsif WINNERS[computer.move.to_s].include?(human.move.to_s)
-      computer.score += 1
-      prompt "#{computer.name} won!"
+      computer
+    end
+  end
+
+  def display_winner
+    if game_winner
+      prompt "#{game_winner.name} won!"
     else
       prompt "It's a tie!"
     end
   end
 
+  def update_score
+    game_winner.score += 1 if game_winner
+  end
+
   def match_winner
+    if human.score == MATCHES_TO_WIN
+      human
+    elsif computer.score == MATCHES_TO_WIN
+      computer
+    end
+  end
+
+  def display_match_winner
     prompt "#{separator}MATCH SCORE"
     prompt "#{human.name}: #{human.score}, #{computer.name}: #{computer.score}."
-
-    if human.score == MATCHES_TO_WIN
-      prompt "#{human.name} wins the match! #{separator}"
-    elsif computer.score == MATCHES_TO_WIN
-      prompt "#{computer.name} wins the match! #{separator}"
+    if match_winner
+      prompt "#{match_winner.name} wins the match! #{separator}"
     end
   end
 
@@ -188,6 +215,14 @@ class RPSGame
     computer.choose(human.history)
     human.update_history
     computer.update_history
+    update_score
+  end
+
+  def display_round
+    display_moves
+    display_winner
+    display_history
+    display_match_winner
   end
 
   def play_again?
@@ -209,12 +244,8 @@ class RPSGame
     display_welcome_message
     loop do
       play_round
-      display_moves
-      determine_winner
-      display_history
-      match_winner
-      break if human.score == MATCHES_TO_WIN ||
-               computer.score == MATCHES_TO_WIN
+      display_round
+      break if match_winner
       break unless play_again?
     end
     display_goodbye_message
