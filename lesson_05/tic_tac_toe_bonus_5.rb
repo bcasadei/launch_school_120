@@ -9,22 +9,25 @@ class Board
     reset
   end
 
-  # rubocop:disable Metrics/AbcSize, MethodLength
+  # rubocop:disable MethodLength
   def draw
-    puts ''
-    puts '     |     |'
-    puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}"
-    puts '     |     |'
-    puts '-----+-----+-----'
-    puts '     |     |'
-    puts "  #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}"
-    puts '     |     |'
-    puts '-----+-----+-----'
-    puts '     |     |'
-    puts "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}"
-    puts '     |     |'
+    draw = <<-DRAW
+
+         |     |
+      #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}
+         |     |
+    -----+-----+-----
+         |     |
+      #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}
+         |     |
+    -----+-----+-----
+         |     |
+      #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}
+         |     |
+    DRAW
+    puts draw
   end
-  # rubocop:enable Metrics/AbcSize, MethodLength
+  # rubocop:enable MethodLength
 
   def []=(num, marker)
     @squares[num].marker = marker
@@ -57,12 +60,12 @@ class Board
   end
 
   def find_at_risk_square(line, player)
-    if @squares.values_at(*line).count do |x|
-      x.instance_variable_get(:@marker) == player
-    end == 2
+    if @squares.values_at(*line).count do |sq|
+         sq.marker == player
+       end == 2
       @squares.select do |k, v|
         line.include?(k) &&
-          v.instance_variable_get(:@marker) == Square::INITIAL_MARKER
+          v.marker == Square::INITIAL_MARKER
       end.keys.first
     end
   end
@@ -83,7 +86,7 @@ class Square
   end
 
   def to_s
-    @marker
+    marker
   end
 
   def unmarked?
@@ -101,7 +104,6 @@ class Human
   attr_reader :marker, :name
 
   def initialize
-    @marker = marker
     @score = 0
     choose_name
     choose_marker
@@ -133,7 +135,6 @@ class Computer
   attr_reader :marker, :name
 
   def initialize(human_marker)
-    @marker = marker
     @score = 0
     choose_name
     choose_marker(human_marker)
@@ -243,31 +244,40 @@ class TTTGame
     board[square] = human.marker
   end
 
-  # rubocop:disable Metrics/AbcSize, MethodLength
-  def computer_moves
+  def aggressive_move
     square = nil
-
     Board::WINNING_LINES.each do |line|
       square = board.find_at_risk_square(line, computer.marker)
       break if square
     end
+    square
+  end
 
-    unless square
-      Board::WINNING_LINES.each do |line|
-        square = board.find_at_risk_square(line, human.marker)
-        break if square
-      end
+  def defensive_move
+    square = nil
+    Board::WINNING_LINES.each do |line|
+      square = board.find_at_risk_square(line, human.marker)
+      break if square
     end
+    square
+  end
 
-    unless square
-      square = 5 if board.unmarked_keys.include?(5)
-    end
+  def center_move
+    5 if board.unmarked_keys.include?(5)
+  end
 
-    square = board.unmarked_keys.sample unless square
+  def random_move
+    board.unmarked_keys.sample
+  end
+
+  def computer_moves
+    square = aggressive_move unless square
+    square = defensive_move unless square
+    square = center_move unless square
+    square = random_move unless square
 
     board[square] = computer.marker
   end
-  # rubocop:enable Metrics/AbcSize, MethodLength
 
   def human_turn?
     @current_player == human.marker
