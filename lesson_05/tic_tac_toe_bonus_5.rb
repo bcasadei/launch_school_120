@@ -245,21 +245,19 @@ class TTTGame
   end
 
   def aggressive_move
-    square = nil
     Board::WINNING_LINES.each do |line|
       square = board.find_at_risk_square(line, computer.marker)
-      break if square
+      return square if square
     end
-    square
+    nil
   end
 
   def defensive_move
-    square = nil
     Board::WINNING_LINES.each do |line|
       square = board.find_at_risk_square(line, human.marker)
-      break if square
+      return square if square
     end
-    square
+    nil
   end
 
   def center_move
@@ -271,7 +269,7 @@ class TTTGame
   end
 
   def computer_moves
-    square = aggressive_move unless square
+    square = aggressive_move
     square = defensive_move unless square
     square = center_move unless square
     square = random_move unless square
