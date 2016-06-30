@@ -34,7 +34,7 @@ class Board
   end
 
   def unmarked_keys
-    @squares.keys.select { |key| @squares[key].unmarked? }
+    @squares.select { |_, square| square.unmarked? }.keys
   end
 
   def full?
