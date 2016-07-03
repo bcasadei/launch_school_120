@@ -1,8 +1,7 @@
-require 'pry'
-
+# Deck class for deck of cards
 class Deck
-  SUITS = %w(Clubs Diamonds Hearts Spades)
-  FACE_VALUE = %w(2 3 4 5 6 7 8 9 10 Jack Queen King Ace)
+  SUITS = %w(Clubs Diamonds Hearts Spades).freeze
+  FACE_VALUE = %w(2 3 4 5 6 7 8 9 10 Jack Queen King Ace).freeze
 
   attr_accessor :deck
 
@@ -16,6 +15,7 @@ class Deck
   end
 end
 
+# Card class for individual cards
 class Card
   attr_accessor :face, :suit, :value
 
@@ -36,9 +36,10 @@ class Card
   end
 end
 
+# Participant super class for all participants
 class Participant
   attr_accessor :hand
-  
+
   def initialize
     @hand = []
     @score = 0
@@ -50,7 +51,7 @@ class Participant
     hand.select { |card| card.face == 'Ace' }.count.times do
       sum -= 10 if sum > Game::WINNING_TOTAL
     end
-    return sum
+    sum
   end
 
   def busted?
@@ -58,6 +59,7 @@ class Participant
   end
 end
 
+# Player class for human player
 class Player < Participant
   attr_accessor :name
 
@@ -76,19 +78,21 @@ class Player < Participant
   end
 end
 
+# Dealer class for computer dealer
 class Dealer < Participant
   attr_reader :name
 
   def initialize
     super
-    @name = "Dealer"
+    @name = 'Dealer'
   end
 end
 
 # Game engine class
+# rubocop:disable Metrics/ClassLength
 class Game
-  WINNING_TOTAL = 21.freeze
-  DEALER_STAYS_AT = 17.freeze
+  WINNING_TOTAL = 21
+  DEALER_STAYS_AT = 17
 
   attr_accessor :player, :dealer
 
@@ -96,6 +100,7 @@ class Game
     @cards = Deck.new
     @player = Player.new
     @dealer = Dealer.new
+    @current_player = player
   end
 
   def clear
@@ -108,7 +113,6 @@ class Game
 
   def separator
     puts '-----------------------------------------'
-    puts ''
   end
 
   def display_welcome_message
@@ -116,22 +120,23 @@ class Game
     separator
   end
 
+  # rubocop:disable MethodLength
   def start
     clear
     display_welcome_message
     loop do
       initial_deal
-      player_display_cards
-      player_turn
+      display_cards
+      current_player_turn
       clear
-      dealer_turn
-      dealer_display_cards
+      current_player_turn
       display_result
       break unless play_again?
       new_hand
       clear
     end
   end
+  # rubocop:enable MethodLength
 
   def new_hand
     player.hand.clear
@@ -144,30 +149,45 @@ class Game
     dealer.hand.push(@cards.deck.shift(2)).flatten!
   end
 
+  def format_one_card(arr)
+    arr.join(', ')
+  end
+
+  def format_multiple_cards(arr)
+    arr[-1].insert(0, '& ')
+    arr.join(', ')
+  end
+
   def format_cards(cards)
-    array = cards.map { |card| "#{card.face} of #{card.suit}"}
+    array = cards.map { |card| "#{card.face} of #{card.suit}" }
     if array.length > 1
-      array[-1].insert(0, '& ')
-      array.join(', ')
+      format_multiple_cards(array)
     else
-      array.join(', ')
+      format_one_card(array)
     end
   end
 
-  def player_display_cards
+  def hide_dealer_card
     prompt "#{dealer.name} has: #{format_cards(dealer.hand[0...-1])} and ???"
-    separator
-    prompt "#{player.name} has: #{format_cards(player.hand)}"
-    prompt "#{player.name}'s total: #{player.total_cards}"
-    separator
+    prompt "#{player.name} has: #{format_cards(player.hand)} |"\
+    " total: #{player.total_cards}"
   end
 
-  def dealer_display_cards
-    prompt "#{dealer.name} has: #{format_cards(dealer.hand)}"
-    prompt "#{dealer.name}'s total: #{dealer.total_cards}"
-    separator
-    prompt "#{player.name} has: #{format_cards(player.hand)}"
-    prompt "#{player.name}'s total: #{player.total_cards}"
+  # rubocop:disable Metrics/AbcSize
+  def show_dealer_card
+    prompt "#{dealer.name} has: #{format_cards(dealer.hand)} |"\
+    " total: #{dealer.total_cards}"
+    prompt "#{player.name} has: #{format_cards(player.hand)} |"\
+    " total: #{player.total_cards}"
+  end
+  # rubocop:enable Metrics/AbcSize
+
+  def display_cards
+    if @current_player == player
+      hide_dealer_card
+    else
+      show_dealer_card
+    end
     separator
   end
 
@@ -176,6 +196,7 @@ class Game
     prompt "#{participant.name} chose to hit."
   end
 
+  # rubocop:disable MethodLength
   def who_won
     if player.busted?
       :player_busted
@@ -187,9 +208,11 @@ class Game
       :dealer_won
     else
       :tie
-    end 
+    end
   end
+  # rubocop:enable MethodLength
 
+  # rubocop:disable Metrics/AbcSize, MethodLength
   def display_result
     result = who_won
     case result
@@ -205,7 +228,19 @@ class Game
       prompt "It's a tie!"
     end
   end
+  # rubocop:enable Metrics/AbcSize, MethodLength
 
+  def current_player_turn
+    if @current_player == player
+      player_turn
+      @current_player = dealer
+    else
+      dealer_turn
+      @current_player = player
+    end
+  end
+
+  # rubocop:disable Metrics/AbcSize, MethodLength
   def player_turn
     loop do
       answer = nil
@@ -213,33 +248,47 @@ class Game
         break if player.busted?
         prompt "Would you like to hit or stay? ('h' or 's')"
         answer = gets.chomp.downcase
-        break if  %w(h s).include?(answer)
+        break if %w(h s).include?(answer)
         prompt "Please enter 'h' or 's' to hit or stay."
       end
       hit(player) if answer == 'h'
-      player_display_cards
       break if player.busted? || answer == 's'
+      display_cards
     end
   end
+  # rubocop:enable Metrics/AbcSize, MethodLength
 
+  # rubocop:disable Metrics/AbcSize, MethodLength
   def dealer_turn
-    prompt "#{dealer.name}'s turn…"
-    separator
     loop do
-      break if dealer.busted? || dealer.total_cards >= DEALER_STAYS_AT
-      hit(dealer)
+      break if player.busted?
+
+      prompt "#{dealer.name}'s turn…"
+      display_cards
+
+      loop do
+        break if dealer.busted? || dealer.total_cards >= DEALER_STAYS_AT
+        hit(dealer)
+        display_cards
+      end
+
+      break
     end
+
+    display_cards if player.busted?
   end
+  # rubocop:enable Metrics/AbcSize, MethodLength
 
   def play_again?
     answer = nil
     loop do
       prompt "Do you want to play again? ('y' or 'n')"
       answer = gets.chomp.downcase
-      break if %w(y n).include?(answer) 
+      break if %w(y n).include?(answer)
     end
     answer == 'y'
   end
 end
+# rubocop:enable Metrics/ClassLength
 
 Game.new.start
