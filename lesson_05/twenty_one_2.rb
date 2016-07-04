@@ -1,7 +1,7 @@
 # Deck class for deck of cards
 class Deck
   SUITS = %w(Clubs Diamonds Hearts Spades).freeze
-  FACE_VALUE = %w(2 3 4 5 6 7 8 9 10 Jack Queen King Ace).freeze
+  RANK = %w(2 3 4 5 6 7 8 9 10 Jack Queen King Ace).freeze
 
   attr_accessor :deck
 
@@ -11,28 +11,32 @@ class Deck
   end
 
   def reset
-    FACE_VALUE.product(SUITS).map { |face, suit| @deck << Card.new(face, suit) }
+    RANK.product(SUITS).map { |rank, suit| @deck << Card.new(rank, suit) }
+  end
+
+  def draw(num)
+    @deck.shift(num)
   end
 end
 
 # Card class for individual cards
 class Card
-  attr_accessor :face, :suit, :value
+  attr_accessor :rank, :suit, :value
 
-  def initialize(face, suit)
-    @face = face
+  def initialize(rank, suit)
+    @rank = rank
     @suit = suit
     set_value
   end
 
   def set_value
-    if face == 'Ace'
-      @value = 11
-    elsif face.to_i == 0
-      @value = 10
-    else
-      @value = face.to_i
-    end
+    @value = if rank == 'Ace'
+               11
+             elsif rank.to_i == 0
+               @value = 10
+             else
+               @value = rank.to_i
+             end
   end
 end
 
@@ -48,10 +52,14 @@ class Participant
   def total_cards
     sum = 0
     hand.each { |card| sum += card.value }
-    hand.select { |card| card.face == 'Ace' }.count.times do
+    hand.select { |card| card.rank == 'Ace' }.count.times do
       sum -= 10 if sum > Game::WINNING_TOTAL
     end
     sum
+  end
+
+  def add_cards(cards)
+    hand.push(cards).flatten!
   end
 
   def busted?
@@ -71,7 +79,7 @@ class Player < Participant
   def choose_name
     loop do
       puts "What's your name?"
-      @name = gets.chomp
+      @name = gets.chomp.strip
       break unless name.empty?
       puts 'Sorry, you must enter a value.'
     end
@@ -89,7 +97,6 @@ class Dealer < Participant
 end
 
 # Game engine class
-# rubocop:disable Metrics/ClassLength
 class Game
   WINNING_TOTAL = 21
   DEALER_STAYS_AT = 17
@@ -120,7 +127,6 @@ class Game
     separator
   end
 
-  # rubocop:disable MethodLength
   def start
     clear
     display_welcome_message
@@ -136,7 +142,6 @@ class Game
       clear
     end
   end
-  # rubocop:enable MethodLength
 
   def new_hand
     player.hand.clear
@@ -145,8 +150,8 @@ class Game
 
   def initial_deal
     @cards.deck.shuffle!
-    player.hand.push(@cards.deck.shift(2)).flatten!
-    dealer.hand.push(@cards.deck.shift(2)).flatten!
+    player.add_cards(@cards.draw(2))
+    dealer.add_cards(@cards.draw(2))
   end
 
   def format_one_card(arr)
@@ -159,7 +164,7 @@ class Game
   end
 
   def format_cards(cards)
-    array = cards.map { |card| "#{card.face} of #{card.suit}" }
+    array = cards.map { |card| "#{card.rank} of #{card.suit}" }
     if array.length > 1
       format_multiple_cards(array)
     else
@@ -173,14 +178,12 @@ class Game
     " total: #{player.total_cards}"
   end
 
-  # rubocop:disable Metrics/AbcSize
   def show_dealer_card
     prompt "#{dealer.name} has: #{format_cards(dealer.hand)} |"\
     " total: #{dealer.total_cards}"
     prompt "#{player.name} has: #{format_cards(player.hand)} |"\
     " total: #{player.total_cards}"
   end
-  # rubocop:enable Metrics/AbcSize
 
   def display_cards
     if @current_player == player
@@ -192,11 +195,10 @@ class Game
   end
 
   def hit(participant)
-    participant.hand.push(@cards.deck.shift).flatten!
+    participant.add_cards(@cards.draw(1))
     prompt "#{participant.name} chose to hit."
   end
 
-  # rubocop:disable MethodLength
   def who_won
     if player.busted?
       :player_busted
@@ -210,25 +212,21 @@ class Game
       :tie
     end
   end
-  # rubocop:enable MethodLength
 
-  # rubocop:disable Metrics/AbcSize, MethodLength
   def display_result
-    result = who_won
-    case result
-    when :player_busted
-      prompt "#{player.name} busted! #{dealer.name} wins!"
-    when :dealer_busted
-      prompt "#{dealer.name} busted! #{player.name} wins!"
-    when :player_won
-      prompt "#{player.name} wins!"
-    when :dealer_won
-      prompt "#{dealer.name} wins!"
-    when :tie
-      prompt "It's a tie!"
-    end
+    prompt case who_won
+           when :player_busted
+             "#{player.name} busted! #{dealer.name} wins!"
+           when :dealer_busted
+             "#{dealer.name} busted! #{player.name} wins!"
+           when :player_won
+             "#{player.name} wins!"
+           when :dealer_won
+             "#{dealer.name} wins!"
+           when :tie
+             "It's a tie!"
+           end
   end
-  # rubocop:enable Metrics/AbcSize, MethodLength
 
   def current_player_turn
     if @current_player == player
@@ -240,7 +238,6 @@ class Game
     end
   end
 
-  # rubocop:disable Metrics/AbcSize, MethodLength
   def player_turn
     loop do
       answer = nil
@@ -256,28 +253,22 @@ class Game
       display_cards
     end
   end
-  # rubocop:enable Metrics/AbcSize, MethodLength
 
-  # rubocop:disable Metrics/AbcSize, MethodLength
   def dealer_turn
-    loop do
-      break if player.busted?
-
-      prompt "#{dealer.name}'s turn…"
+    if player.busted?
       display_cards
-
-      loop do
-        break if dealer.busted? || dealer.total_cards >= DEALER_STAYS_AT
-        hit(dealer)
-        display_cards
-      end
-
-      break
+      return nil
     end
 
-    display_cards if player.busted?
+    prompt "#{dealer.name}'s turn…"
+    display_cards
+
+    loop do
+      break if dealer.busted? || dealer.total_cards >= DEALER_STAYS_AT
+      hit(dealer)
+      display_cards
+    end
   end
-  # rubocop:enable Metrics/AbcSize, MethodLength
 
   def play_again?
     answer = nil
@@ -289,6 +280,5 @@ class Game
     answer == 'y'
   end
 end
-# rubocop:enable Metrics/ClassLength
 
 Game.new.start
