@@ -1,3 +1,5 @@
+require 'pry'
+
 # Deck class for deck of cards
 class Deck
   SUITS = %w(Clubs Diamonds Hearts Spades).freeze
@@ -8,6 +10,10 @@ class Deck
   def initialize
     @deck = []
     reset
+  end
+
+  def shuffle_deck
+    deck.shuffle!
   end
 
   def reset
@@ -33,9 +39,9 @@ class Card
     @value = if rank == 'Ace'
                11
              elsif rank.to_i == 0
-               @value = 10
+               10
              else
-               @value = rank.to_i
+               rank.to_i
              end
   end
 end
@@ -52,14 +58,18 @@ class Participant
   def total_cards
     sum = 0
     hand.each { |card| sum += card.value }
-    hand.select { |card| card.rank == 'Ace' }.count.times do
-      sum -= 10 if sum > Game::WINNING_TOTAL
+    hand.each do |card|
+      sum -= 10 if card.rank == 'Ace' && sum > Game::WINNING_TOTAL
     end
     sum
   end
 
   def add_cards(cards)
     hand.push(cards).flatten!
+  end
+
+  def clear_hand
+    hand.clear
   end
 
   def busted?
@@ -144,12 +154,12 @@ class Game
   end
 
   def new_hand
-    player.hand.clear
-    dealer.hand.clear
+    player.clear_hand
+    dealer.clear_hand
   end
 
   def initial_deal
-    @cards.deck.shuffle!
+    @cards.shuffle_deck
     player.add_cards(@cards.draw(2))
     dealer.add_cards(@cards.draw(2))
   end
